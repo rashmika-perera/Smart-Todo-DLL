@@ -13,8 +13,11 @@ public class TodoService {
     // main tasks list
     private final DoublyLinkedList<Task> tasks = new DoublyLinkedList<>();
 
-    // deleted tasks stack (DLL) for undo :contentReference[oaicite:4]{index=4}
+    // deleted tasks stack (DLL) for undo
     private final DoublyLinkedList<UndoRecord> undo = new DoublyLinkedList<>();
+
+    // 🆕 NEW: Momentum tracker
+    private final MomentumTracker momentumTracker = new MomentumTracker();
 
     private static class UndoRecord {
         Task task;
@@ -128,10 +131,13 @@ public class TodoService {
         return null;
     }
 
-    // Conditional workflow: parent cannot be completed if any subtask not completed :contentReference[oaicite:5]{index=5}
+    // Conditional workflow: parent cannot be completed if any subtask not completed
     public void updateTaskStatus(String idPrefix, Status newStatus) {
         Task task = findTaskByIdPrefix(idPrefix);
         if (task == null) { System.out.println("❌ Task not found."); return; }
+
+        // 🆕 NEW: Record momentum interaction when working on task
+        momentumTracker.recordInteraction(task, MomentumTracker.InteractionType.WORK);
 
         boolean isMainTask = tasks.find(t -> t == task) != null;
 
@@ -154,6 +160,11 @@ public class TodoService {
         if (!isMainTask) {
             Task parent = findParent(task);
             if (parent != null) {
+                // 🆕 NEW: Boost parent momentum when subtask completed
+                if (newStatus == Status.COMPLETED) {
+                    momentumTracker.recordInteraction(parent, MomentumTracker.InteractionType.SUBTASK_COMPLETE);
+                }
+
                 // Check if all subtasks are completed
                 boolean allCompleted = true;
                 Node<Task> st = parent.getSubtasks().getHead();
@@ -173,18 +184,24 @@ public class TodoService {
         }
 
         System.out.println("✅ Status updated.");
+
+        // 🆕 NEW: Auto-reorder by momentum
+        momentumTracker.reorderByMomentum(tasks);
     }
 
     public void addSubtask(String parentIdPrefix, String name, LocalDate deadline, Priority priority) {
         Node<Task> node = tasks.find(t -> t.getId().startsWith(parentIdPrefix));
         if (node == null) { System.out.println("❌ Parent task not found."); return; }
 
+        // 🆕 NEW: Record interaction when adding subtask
+        momentumTracker.recordInteraction(node.data, MomentumTracker.InteractionType.COMMENT);
+
         Task sub = new Task(name, node.data.getCategory(), deadline, priority);
         node.data.getSubtasks().addLast(sub);
         System.out.println("✅ Subtask added.");
     }
 
-    // Priority promotion by deadline/aging (simple version) :contentReference[oaicite:6]{index=6}
+    // Priority promotion by deadline/aging (simple version)
     public void autoPromotePriorities() {
         LocalDate today = LocalDate.now();
         tasks.forEach(t -> {
@@ -202,5 +219,29 @@ public class TodoService {
         });
         System.out.println("⚡ Auto promotion done (based on deadlines).");
     }
-}
 
+    // 🆕 NEW: Apply momentum decay and reorder
+    public void updateMomentum() {
+        momentumTracker.applyDecay(tasks);
+        momentumTracker.reorderByMomentum(tasks);
+        System.out.println("⏰ Momentum updated based on time decay.");
+    }
+
+    // 🆕 NEW: Show momentum insights
+    public void showMomentumInsights() {
+        momentumTracker.showInsights(tasks);
+    }
+
+    // 🆕 NEW: Work on a task (simulate interaction)
+    public void workOnTask(String idPrefix) {
+        Task task = findTaskByIdPrefix(idPrefix);
+        if (task == null) {
+            System.out.println("❌ Task not found.");
+            return;
+        }
+
+        momentumTracker.recordInteraction(task, MomentumTracker.InteractionType.WORK);
+        momentumTracker.reorderByMomentum(tasks);
+        System.out.println("✅ Worked on task: " + task.getName());
+    }
+}
