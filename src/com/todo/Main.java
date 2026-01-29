@@ -21,6 +21,9 @@ public class Main {
             System.out.println("5) Add subtask");
             System.out.println("6) Update task status");
             System.out.println("7) Auto-promote priorities");
+            System.out.println("8) Work on task (boost momentum)");
+            System.out.println("9) Update momentum (apply decay)");
+            System.out.println("10) Show momentum insights");
             System.out.println("0) Exit");
             System.out.print("Choose: ");
 
@@ -32,7 +35,7 @@ public class Main {
                 System.out.println("Invalid choice. Please enter a valid number.");
                 continue;
             }
-
+            
         }
     }
 }
