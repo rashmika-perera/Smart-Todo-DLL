@@ -35,6 +35,7 @@ public class Main {
                 System.out.println("Invalid choice. Please enter a valid number.");
                 continue;
             }
+
             switch (c) {
                 case 1 -> {
                     System.out.print("Name: ");
