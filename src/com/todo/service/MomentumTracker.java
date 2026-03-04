@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 🔥 Task Momentum System
+ *  Task Momentum System
  * Tracks task "heat" and automatically reorders tasks in DLL based on momentum
  */
 public class MomentumTracker {
@@ -171,8 +171,9 @@ public class MomentumTracker {
     /**
      * Show momentum insights
      */
-    public void showInsights(DoublyLinkedList<Task> tasks) {
-        System.out.println("\n📊 === MOMENTUM INSIGHTS ===");
+    public String showInsights(DoublyLinkedList<Task> tasks) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\n📊 === MOMENTUM INSIGHTS ===\n");
 
         Task hottest = null;
         Task coldest = null;
@@ -196,15 +197,19 @@ public class MomentumTracker {
         }
 
         if (hottest != null) {
-            System.out.println("🔥 Hottest: " + hottest.getName() + " (" + hottest.getMomentum() + ")");
+            sb.append("🔥 Hottest: ").append(hottest.getName()).append(" (").append(hottest.getMomentum()).append(")\n");
         }
         if (coldest != null) {
-            System.out.println("❄️  Coldest: " + coldest.getName() + " (" + coldest.getMomentum() + ")");
+            sb.append("❄️  Coldest: ").append(coldest.getName()).append(" (").append(coldest.getMomentum()).append(")\n");
         }
         if (frozenCount > 0) {
-            System.out.println("⚠️  WARNING: " + frozenCount + " frozen tasks need attention!");
+            sb.append("⚠️  WARNING: ").append(frozenCount).append(" frozen tasks need attention!\n");
         }
-        System.out.println();
+        sb.append("\n");
+
+        String result = sb.toString();
+        System.out.print(result);
+        return result;
     }
 
     public enum InteractionType {
