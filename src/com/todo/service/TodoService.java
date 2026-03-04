@@ -48,7 +48,7 @@ public class TodoService {
     public void addTask(String name, String category, LocalDate deadline, Priority priority) {
         Task newTask = new Task(name, category, deadline, priority);
         tasks.addLast(newTask);
-        DatabaseManager.saveTask(newTask, null); // Save to DB
+        DatabaseManager.saveTask(newTask, null);
         System.out.println("✅ Task added.");
     }
 
@@ -73,7 +73,7 @@ public class TodoService {
         // save undo info
         undo.addLast(new UndoRecord(node.data, node.prev, node.next));
         tasks.removeNode(node);
-        DatabaseManager.deleteTask(node.data.getId()); // Delete from DB
+        DatabaseManager.deleteTask(node.data.getId());
         System.out.println("🗑️ Task deleted. (You can undo)");
     }
 
@@ -94,7 +94,7 @@ public class TodoService {
         if (tasks.getHead() == null) {
             // easiest: addLast
             tasks.addLast(rec.task);
-            DatabaseManager.saveTask(rec.task, rec.task.getParentId()); // Restore to DB
+            DatabaseManager.saveTask(rec.task, rec.task.getParentId());
             System.out.println("↩️ Undo restored (as first task).");
             return;
         }
@@ -220,6 +220,8 @@ public class TodoService {
         momentumTracker.recordInteraction(node.data, MomentumTracker.InteractionType.COMMENT);
 
         Task sub = new Task(name, node.data.getCategory(), deadline, priority);
+        // Fix: Set parent ID for potential later updates
+        sub.setParentId(node.data.getId());
         node.data.getSubtasks().addLast(sub);
 
         // Save subtask
@@ -232,23 +234,44 @@ public class TodoService {
     public String autoPromotePriorities() {
         LocalDate today = LocalDate.now();
         int[] promoted = {0};
-        tasks.forEach(t -> {
-            if (t.getDeadline() == null) return;
 
+        // Recursively promote priorities and save changes
+        tasks.forEach(t -> checkAndPromote(t, today, promoted));
+
+        return "⚡ Auto promotion done (based on deadlines). Promoted " + promoted[0] + " tasks.";
+    }
+
+    private void checkAndPromote(Task t, LocalDate today, int[] promoted) {
+        boolean changed = false;
+
+        if (t.getDeadline() != null) {
             long daysLeft = java.time.temporal.ChronoUnit.DAYS.between(today, t.getDeadline());
 
+            // Promote based on proximity to deadline
             if (daysLeft < 0) {
-                t.setPriority(Priority.CRITICAL);
-                promoted[0]++;
+                if (t.getPriority() != Priority.CRITICAL) {
+                    t.setPriority(Priority.CRITICAL);
+                    promoted[0]++;
+                    changed = true;
+                }
             } else if (daysLeft <= 1 && t.getPriority().ordinal() < Priority.HIGH.ordinal()) {
                 t.setPriority(Priority.HIGH);
                 promoted[0]++;
+                changed = true;
             } else if (daysLeft <= 3 && t.getPriority().ordinal() < Priority.MEDIUM.ordinal()) {
                 t.setPriority(Priority.MEDIUM);
                 promoted[0]++;
+                changed = true;
             }
-        });
-        return "⚡ Auto promotion done (based on deadlines). Promoted " + promoted[0] + " tasks.";
+        }
+
+        if (changed) {
+            // Save updated priority to DB. Use existing parent ID.
+            DatabaseManager.saveTask(t, t.getParentId());
+        }
+
+        // Recurse for subtasks
+        t.getSubtasks().forEach(sub -> checkAndPromote(sub, today, promoted));
     }
 
     public void updateMomentum() {
