@@ -32,8 +32,23 @@ public class TodoService {
         }
     }
 
+    public TodoService() {
+        // Initialize DB
+        DatabaseManager.initializeDatabase();
+        // Load tasks from DB on startup
+        this.tasks.clear(); // Ensure clear start
+        DoublyLinkedList<Task> loadedTasks = DatabaseManager.loadAllTasks();
+        loadedTasks.forEach(this.tasks::addLast);
+    }
+
+    public DoublyLinkedList<Task> getTasks() {
+        return tasks;
+    }
+
     public void addTask(String name, String category, LocalDate deadline, Priority priority) {
-        tasks.addLast(new Task(name, category, deadline, priority));
+        Task newTask = new Task(name, category, deadline, priority);
+        tasks.addLast(newTask);
+        DatabaseManager.saveTask(newTask, null); // Save to DB
         System.out.println("✅ Task added.");
     }
 
@@ -58,6 +73,7 @@ public class TodoService {
         // save undo info
         undo.addLast(new UndoRecord(node.data, node.prev, node.next));
         tasks.removeNode(node);
+        DatabaseManager.deleteTask(node.data.getId()); // Delete from DB
         System.out.println("🗑️ Task deleted. (You can undo)");
     }
 
@@ -78,6 +94,7 @@ public class TodoService {
         if (tasks.getHead() == null) {
             // easiest: addLast
             tasks.addLast(rec.task);
+            DatabaseManager.saveTask(rec.task, rec.task.getParentId()); // Restore to DB
             System.out.println("↩️ Undo restored (as first task).");
             return;
         }
@@ -87,11 +104,11 @@ public class TodoService {
             Node<Task> oldHead = tasks.getHead();
             newNode.next = oldHead;
             oldHead.prev = newNode;
-            // we need to set head: easiest approach is to rebuild by special method,
-            // but we kept head private. For simplicity, do this instead:
-            // (Recommended: add insertFirst method in DLL.)
+            // set head logic skipped for brevity, simplistic fallback:
             System.out.println("⚠️ Add insertFirst() in DLL for perfect restore.");
             tasks.addLast(rec.task); // fallback
+
+            DatabaseManager.saveTask(rec.task, rec.task.getParentId()); // Restore to DB
             return;
         }
 
@@ -106,6 +123,8 @@ public class TodoService {
             newNode.next = next;
             next.prev = newNode;
         }
+
+        DatabaseManager.saveTask(rec.task, rec.task.getParentId()); // Restore to DB
 
         System.out.println("↩️ Undo restored task.");
     }
@@ -155,6 +174,9 @@ public class TodoService {
 
         task.setStatus(newStatus);
 
+        // Save changes to DB
+        DatabaseManager.saveTask(task, task.getParentId());
+
         // Handle subtask status changes affecting parent
         if (!isMainTask) {
             Task parent = findParent(task);
@@ -176,8 +198,10 @@ public class TodoService {
                 }
                 if (allCompleted) {
                     parent.setStatus(Status.COMPLETED);
+                    DatabaseManager.saveTask(parent, null); // Save parent
                 } else if (newStatus == Status.IN_PROGRESS && parent.getStatus() == Status.PENDING) {
                     parent.setStatus(Status.IN_PROGRESS);
+                    DatabaseManager.saveTask(parent, null); // Save parent
                 }
             }
         }
@@ -197,6 +221,10 @@ public class TodoService {
 
         Task sub = new Task(name, node.data.getCategory(), deadline, priority);
         node.data.getSubtasks().addLast(sub);
+
+        // Save subtask
+        DatabaseManager.saveTask(sub, node.data.getId());
+
         System.out.println("✅ Subtask added.");
     }
 
@@ -226,6 +254,10 @@ public class TodoService {
     public void updateMomentum() {
         momentumTracker.applyDecay(tasks);
         momentumTracker.reorderByMomentum(tasks);
+
+        // Save all updated momentums
+        tasks.forEach(task -> DatabaseManager.saveTask(task, null));
+
         System.out.println("⏰ Momentum updated based on time decay.");
     }
 
@@ -243,11 +275,9 @@ public class TodoService {
 
         momentumTracker.recordInteraction(task, MomentumTracker.InteractionType.WORK);
         momentumTracker.reorderByMomentum(tasks);
-        System.out.println("✅ Worked on task: " + task.getName());
-    }
+        // Save momentum update
+        DatabaseManager.saveTask(task, task.getParentId());
 
-    // Getter for tasks to support GUI
-    public DoublyLinkedList<Task> getTasks() {
-        return tasks;
+        System.out.println("✅ Worked on task: " + task.getName());
     }
 }

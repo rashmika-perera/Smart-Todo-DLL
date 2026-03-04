@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="demo">
+    <CLASSES />
+    <JAVADOC />
+    <SOURCES>
+      <root url="file://$USER_HOME$/Downloads/sqlite-jdbc-3.51.2.0/demo" />
+      <root url="file://$USER_HOME$/Downloads/sqlite-jdbc-3.51.2.0/src/main/java" />
+      <root url="file://$USER_HOME$/Downloads/sqlite-jdbc-3.51.2.0/src/main/java9" />
+      <root url="file://$USER_HOME$/Downloads/sqlite-jdbc-3.51.2.0/src/test/java" />
+    </SOURCES>
+  </library>
+</component>
