@@ -16,7 +16,7 @@ public class TodoService {
     // deleted tasks stack (DLL) for undo
     private final DoublyLinkedList<UndoRecord> undo = new DoublyLinkedList<>();
 
-    // 🆕 NEW: Momentum tracker
+    // Momentum tracker
     private final MomentumTracker momentumTracker = new MomentumTracker();
 
     private static class UndoRecord {
@@ -136,7 +136,6 @@ public class TodoService {
         Task task = findTaskByIdPrefix(idPrefix);
         if (task == null) { System.out.println("❌ Task not found."); return; }
 
-        // 🆕 NEW: Record momentum interaction when working on task
         momentumTracker.recordInteraction(task, MomentumTracker.InteractionType.WORK);
 
         boolean isMainTask = tasks.find(t -> t == task) != null;
@@ -160,7 +159,7 @@ public class TodoService {
         if (!isMainTask) {
             Task parent = findParent(task);
             if (parent != null) {
-                // 🆕 NEW: Boost parent momentum when subtask completed
+                // NEW: Boost parent momentum when subtask completed
                 if (newStatus == Status.COMPLETED) {
                     momentumTracker.recordInteraction(parent, MomentumTracker.InteractionType.SUBTASK_COMPLETE);
                 }
@@ -185,7 +184,7 @@ public class TodoService {
 
         System.out.println("✅ Status updated.");
 
-        // 🆕 NEW: Auto-reorder by momentum
+        // Auto-reorder by momentum
         momentumTracker.reorderByMomentum(tasks);
     }
 
@@ -193,7 +192,7 @@ public class TodoService {
         Node<Task> node = tasks.find(t -> t.getId().startsWith(parentIdPrefix));
         if (node == null) { System.out.println("❌ Parent task not found."); return; }
 
-        // 🆕 NEW: Record interaction when adding subtask
+        // Record interaction when adding subtask
         momentumTracker.recordInteraction(node.data, MomentumTracker.InteractionType.COMMENT);
 
         Task sub = new Task(name, node.data.getCategory(), deadline, priority);
@@ -202,8 +201,9 @@ public class TodoService {
     }
 
     // Priority promotion by deadline/aging (simple version)
-    public void autoPromotePriorities() {
+    public String autoPromotePriorities() {
         LocalDate today = LocalDate.now();
+        int[] promoted = {0};
         tasks.forEach(t -> {
             if (t.getDeadline() == null) return;
 
@@ -211,28 +211,29 @@ public class TodoService {
 
             if (daysLeft < 0) {
                 t.setPriority(Priority.CRITICAL);
+                promoted[0]++;
             } else if (daysLeft <= 1 && t.getPriority().ordinal() < Priority.HIGH.ordinal()) {
                 t.setPriority(Priority.HIGH);
+                promoted[0]++;
             } else if (daysLeft <= 3 && t.getPriority().ordinal() < Priority.MEDIUM.ordinal()) {
                 t.setPriority(Priority.MEDIUM);
+                promoted[0]++;
             }
         });
-        System.out.println("⚡ Auto promotion done (based on deadlines).");
+        return "⚡ Auto promotion done (based on deadlines). Promoted " + promoted[0] + " tasks.";
     }
 
-    // 🆕 NEW: Apply momentum decay and reorder
     public void updateMomentum() {
         momentumTracker.applyDecay(tasks);
         momentumTracker.reorderByMomentum(tasks);
         System.out.println("⏰ Momentum updated based on time decay.");
     }
 
-    // 🆕 NEW: Show momentum insights
-    public void showMomentumInsights() {
-        momentumTracker.showInsights(tasks);
+    public String showMomentumInsights() {
+        return momentumTracker.showInsights(tasks);
     }
 
-    // 🆕 NEW: Work on a task (simulate interaction)
+    // Work on a task (simulate interaction)
     public void workOnTask(String idPrefix) {
         Task task = findTaskByIdPrefix(idPrefix);
         if (task == null) {
@@ -243,5 +244,10 @@ public class TodoService {
         momentumTracker.recordInteraction(task, MomentumTracker.InteractionType.WORK);
         momentumTracker.reorderByMomentum(tasks);
         System.out.println("✅ Worked on task: " + task.getName());
+    }
+
+    // Getter for tasks to support GUI
+    public DoublyLinkedList<Task> getTasks() {
+        return tasks;
     }
 }
