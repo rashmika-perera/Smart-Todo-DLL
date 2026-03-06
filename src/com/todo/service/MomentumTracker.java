@@ -156,9 +156,6 @@ public class MomentumTracker {
         }
     }
 
-    /**
-     * Get momentum heat indicator
-     */
     public static String getMomentumIndicator(int momentum) {
         if (momentum >= 90) return "🔥🔥🔥🔥";
         if (momentum >= 70) return "🔥🔥🔥";
